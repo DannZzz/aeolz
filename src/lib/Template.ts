@@ -5,26 +5,27 @@ import { Utils } from "./Utils"
 export type TemplateItem<T extends any = any> = {
   required?: boolean
   key: string
-  type?: T
   default?: T
 }
 
 export type TemplateItemString<T extends any = any> = TemplateItem<T> | string
 
-export type TypedTemplateItems<T extends readonly TemplateItem[]> = {
-  [P in keyof T]: T[P] extends TemplateItem<infer U> ? U : never
-}
+// export type TypedTemplateItems<T extends readonly TemplateItem[]> = {
+//   [P in keyof T]: T[P] extends TemplateItem<infer U> ? U : never
+// }
 
 export type TemplateOptions = {
   default?: any
+  requireAll?: boolean
   global?: boolean
   name?: keyof Aeolz.TemplateList
 }
 
-export class Template<
-  T extends readonly TemplateItem[] = readonly TemplateItem[]
-> {
-  constructor(readonly items: T, public options: TemplateOptions = {}) {
+export class Template<I extends readonly any[] = readonly any[]> {
+  constructor(
+    readonly items: TemplateItem[],
+    public options: TemplateOptions = {}
+  ) {
     if (options.global) {
       if (!options.name) {
         Utils.createError("Template must have a name for registering globally")
@@ -34,11 +35,12 @@ export class Template<
     }
   }
 
-  take(data: object): TypedTemplateItems<T> {
+  take(data: object): I {
     const items: any = []
     for (let item of this.items) {
       if (!recursiveKeyExists(item.key, data)) {
-        if (item.required) return null
+        if ("required" in item ? item.required : !!this.options.requireAll)
+          return null
         if ("default" in item) {
           items.push(item.default)
         } else if ("default" in this.options) {
@@ -51,8 +53,18 @@ export class Template<
     return items
   }
 
-  static items<T extends TemplateItem[]>(...items: T): Readonly<T> {
-    return items
+  /**
+   * This method makes all items required
+   */
+  toObject<O extends object = object>(template: I): O {
+    const object: object = {}
+    if (!Array.isArray(template) || template.length > this.items.length)
+      return object as O
+    this.items.forEach((item, i) => {
+      const itemData = template[i]
+      assignValue(object, item.key, itemData)
+    })
+    return object as O
   }
 
   static useString(items: TemplateItemString[]): TemplateItem[] {
@@ -60,6 +72,18 @@ export class Template<
       typeof item === "string" ? { key: item } : item
     )
   }
+}
+
+function assignValue(obj: object, key: string, value: any): void {
+  const keys = key.split(".")
+  const lastKey = keys.pop()
+
+  keys.reduce((nestedObj, nestedKey) => {
+    if (!nestedObj[nestedKey]) {
+      nestedObj[nestedKey] = {}
+    }
+    return nestedObj[nestedKey]
+  }, obj)[lastKey] = value
 }
 
 function recursiveKeyExists(key: string, obj: object) {
