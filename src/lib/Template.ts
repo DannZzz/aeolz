@@ -6,6 +6,7 @@ export type TemplateItem<T extends any = any> = {
   required?: boolean
   key: string
   default?: T
+  useTemplate?: keyof Aeolz.TemplateList | Template
 }
 
 export type TemplateItemString<T extends any = any> = TemplateItem<T> | string
@@ -22,10 +23,15 @@ export type TemplateOptions = {
 }
 
 export class Template<I extends readonly any[] = readonly any[]> {
+  items: TemplateItem[]
   constructor(
-    readonly items: TemplateItem[],
+    items: TemplateItemString[],
     public options: TemplateOptions = {}
   ) {
+    this.items = items.map((item) =>
+      typeof item === "string" ? { key: item } : item
+    )
+
     if (options.global) {
       if (!options.name) {
         Utils.createError("Template must have a name for registering globally")
@@ -38,16 +44,28 @@ export class Template<I extends readonly any[] = readonly any[]> {
   take(data: object): I {
     const items: any = []
     for (let item of this.items) {
+      const templateToUse =
+        typeof item.useTemplate === "string"
+          ? Global.useTemplate(item.useTemplate)
+          : item.useTemplate
       if (!recursiveKeyExists(item.key, data)) {
         if ("required" in item ? item.required : !!this.options.requireAll)
           return null
+
         if ("default" in item) {
-          items.push(item.default)
+          items.push(
+            templateToUse instanceof Template
+              ? templateToUse.take(item.default)
+              : item.default
+          )
         } else if ("default" in this.options) {
           items.push(this.options.default)
         }
       } else {
-        items.push(recursiveKey(item.key, data))
+        const val = recursiveKey(item.key, data)
+        items.push(
+          templateToUse instanceof Template ? templateToUse.take(val) : val
+        )
       }
     }
     return items
@@ -62,15 +80,19 @@ export class Template<I extends readonly any[] = readonly any[]> {
       return object as O
     this.items.forEach((item, i) => {
       const itemData = template[i]
-      assignValue(object, item.key, itemData)
+      const templateToUse =
+        typeof item.useTemplate === "string"
+          ? Global.useTemplate(item.useTemplate)
+          : item.useTemplate
+      assignValue(
+        object,
+        item.key,
+        templateToUse instanceof Template
+          ? templateToUse.toObject(itemData)
+          : itemData
+      )
     })
     return object as O
-  }
-
-  static useString(items: TemplateItemString[]): TemplateItem[] {
-    return items.map((item) =>
-      typeof item === "string" ? { key: item } : item
-    )
   }
 }
 
