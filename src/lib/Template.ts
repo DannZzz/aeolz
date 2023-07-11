@@ -43,6 +43,7 @@ export class Template<I extends readonly any[] = readonly any[]> {
 
   take(data: object): I {
     const items: any = []
+    if (!data || typeof data !== "object" || Array.isArray(data)) return null
     for (let item of this.items) {
       const templateToUse =
         typeof item.useTemplate === "string"

@@ -1,6 +1,6 @@
 {
   "name": "aeolz",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Aeolz's Global Powerfull Classes",
   "main": "./lib/index.js",
   "typings": "./lib/index-types.d.ts",
