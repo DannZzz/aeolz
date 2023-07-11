@@ -113,6 +113,7 @@ function recursiveKeyExists(key: string, obj: object) {
   if (keyArr.length === 0) return false
   let val: any = obj
   while (keyArr.length > 0) {
+    if (typeof val !== "object") return false
     const key = keyArr.shift()
     if (key in val) {
       val = val[key]
@@ -128,6 +129,7 @@ function recursiveKey(key: string, obj: object) {
   let val: any = obj
   while (keyArr.length > 0) {
     const key = keyArr.shift()
+    if (typeof val !== "object") return undefined
     if (key in val) {
       val = val[key]
     } else {
