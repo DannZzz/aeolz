@@ -7,6 +7,7 @@ export type TemplateItem<T extends any = any> = {
   key: string
   default?: T
   useTemplate?: keyof Aeolz.TemplateList | Template
+  each?: boolean
 }
 
 export type TemplateItemString<T extends any = any> = TemplateItem<T> | string
@@ -65,7 +66,11 @@ export class Template<I extends readonly any[] = readonly any[]> {
       } else {
         const val = recursiveKey(item.key, data)
         items.push(
-          templateToUse instanceof Template ? templateToUse.take(val) : val
+          templateToUse instanceof Template
+            ? item.each && Array.isArray(val)
+              ? val.map((v) => templateToUse.take(v))
+              : templateToUse.take(val)
+            : val
         )
       }
     }
@@ -89,7 +94,9 @@ export class Template<I extends readonly any[] = readonly any[]> {
         object,
         item.key,
         templateToUse instanceof Template
-          ? templateToUse.toObject(itemData)
+          ? item.each && Array.isArray(itemData)
+            ? itemData.map((itemD) => templateToUse.toObject(itemD))
+            : templateToUse.toObject(itemData)
           : itemData
       )
     })
